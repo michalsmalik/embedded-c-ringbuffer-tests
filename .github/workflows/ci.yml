@@ -1,0 +1,26 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+        capacity: [2u, 16u, 256u]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tests (${{ matrix.cc }}, capacity ${{ matrix.capacity }})
+        run: make test CC=${{ matrix.cc }} CFLAGS="-std=c11 -Wall -Wextra -Werror -pedantic -O2 -DRINGBUF_CAPACITY=${{ matrix.capacity }}"
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: AddressSanitizer + UBSan
+        run: make sanitize
+      - name: Valgrind
+        run: sudo apt-get install -y -qq valgrind && make valgrind
+      - name: Invalid capacity must not compile
+        run: "! gcc -std=c11 -DRINGBUF_CAPACITY=10u -c ringbuf.c -o /dev/null"
